@@ -1,11 +1,16 @@
-def save_products(session, Product, items):
+from models import Product
+
+def save_products(session, items):
     for item in items:
+
+        if not isinstance(item, dict):
+            continue
 
         url = item.get("url")
         title = item.get("title")
 
-        # ❗ 沒 url 直接跳過（避免 DB crash）
-        if not url:
+        # 防呆
+        if not url or not title:
             continue
 
         exists = session.query(Product).filter_by(url=url).first()
