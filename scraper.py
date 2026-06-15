@@ -1,3 +1,8 @@
+def safe_float(x):
+    try:
+        return float(x)
+    except:
+        return 0.0
 import requests
 from datetime import datetime
 import urllib.parse
