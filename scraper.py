@@ -1,75 +1,37 @@
-import requests
-from datetime import datetime
-import urllib.parse
+import streamlit as st
+from scraper import search_all
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+st.set_page_config(page_title="Market Scraper", layout="wide")
 
+st.title("🛒 Multi Marketplace Scraper (Shopee / Yahoo / Mercari)")
 
-def search_shopee(keyword):
-    try:
-        url = "https://shopee.tw/api/v4/search/search_items"
+keyword = st.text_input("輸入搜尋關鍵字")
 
-        params = {
-            "by": "relevancy",
-            "keyword": keyword,
-            "limit": 5,
-            "newest": 0,
-            "order": "desc",
-            "page_type": "search"
-        }
+if st.button("開始搜尋") and keyword:
+    data = search_all(keyword)
 
-        r = requests.get(url, params=params, headers=HEADERS, timeout=10)
+    for platform, items in data.items():
+        st.subheader(f"📦 {platform.upper()}")
 
-        print("Shopee status:", r.status_code)
+        if not items:
+            st.warning("沒有資料")
+            continue
 
-        data = r.json()
+        cols = st.columns(3)
 
-        print("Shopee keys:", data.keys())
+        for idx, item in enumerate(items):
+            with cols[idx % 3]:
 
-        items = []
+                # 圖片防呆（避免 broken image）
+                if item.get("image"):
+                    st.image(item["image"], use_container_width=True)
+                else:
+                    st.image("https://via.placeholder.com/300x200?text=No+Image", use_container_width=True)
 
-        for item in data.get("items", []):
-            basic = item.get("item_basic", {})
+                st.markdown(f"**{item.get('title', 'No title')}**")
 
-            print("Shopee item:", basic.get("name"))
+                if item.get("price"):
+                    st.write(f"💰 {item['price']}")
 
-            shop_id = basic.get("shopid")
-            item_id = basic.get("itemid")
-
-            items.append({
-                "title": basic.get("name", "no title"),
-                "price": basic.get("price", 0) / 100000,
-                "platform": "Shopee",
-                "url": f"https://shopee.tw/product/{shop_id}/{item_id}",
-                "image": "",
-                "time": datetime.now().strftime("%Y-%m-%d %H:%M")
-            })
-
-        return items
-
-    except Exception as e:
-        print("Shopee ERROR:", e)
-        return []
-
-
-def search_mercari(keyword):
-    return []  # 先關掉（避免干擾）
-
-
-def search_yahoo(keyword):
-    return [{
-        "title": keyword,
-        "price": 0,
-        "platform": "Yahoo",
-        "url": "https://tw.bid.yahoo.com",
-        "image": "",
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }]
-
-
-def search_all(keyword):
-    results = []
-    results += search_shopee(keyword)
-    results += search_mercari(keyword)
-    results += search_yahoo(keyword)
-    return results
+                if item.get("url"):
+                    st.markdown(f"[👉 連結]({item['url']})")
