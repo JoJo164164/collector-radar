@@ -1,38 +1,49 @@
 import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
 import urllib.parse
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0"
+}
+
 # =========================
-# Shopee 搜尋
+# Shopee（改 JSON API）
 # =========================
 def search_shopee(keyword):
+
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
+        url = "https://shopee.tw/api/v4/search/search_items"
+
+        params = {
+            "by": "relevancy",
+            "keyword": keyword,
+            "limit": 20,
+            "newest": 0,
+            "order": "desc",
+            "page_type": "search"
         }
 
-        url = f"https://shopee.tw/search?keyword={urllib.parse.quote(keyword)}"
-
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.text, "lxml")
+        r = requests.get(url, params=params, headers=HEADERS, timeout=10)
+        data = r.json()
 
         items = []
 
-        # Shopee DOM 會變動，這是「基礎抓法」
-        for tag in soup.select("div[data-sqe='item']")[:10]:
+        for item in data.get("items", []):
 
-            title = tag.text.strip()[:50]
+            item_basic = item.get("item_basic", {})
 
-            link = tag.find("a")
-            url = "https://shopee.tw" + link["href"] if link else ""
+            title = item_basic.get("name", "")
+            price = item_basic.get("price", 0) / 100000
+            shop_id = item_basic.get("shopid")
+            item_id = item_basic.get("itemid")
 
-            img = tag.find("img")
-            image = img["src"] if img else ""
+            url = f"https://shopee.tw/product/{shop_id}/{item_id}"
+
+            image = "https://cf.shopee.tw/file/" + item_basic.get("image", "")
 
             items.append({
                 "title": title,
-                "price": 0,
+                "price": price,
                 "platform": "Shopee",
                 "url": url,
                 "image": image,
@@ -47,37 +58,30 @@ def search_shopee(keyword):
 
 
 # =========================
-# Mercari 搜尋
+# Mercari（穩定 HTML selector）
 # =========================
 def search_mercari(keyword):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
 
+    try:
         url = f"https://www.mercari.com/jp/search/?keyword={urllib.parse.quote(keyword)}"
 
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.text, "lxml")
+        r = requests.get(url, headers=HEADERS, timeout=10)
 
         items = []
 
-        for tag in soup.select("li.items-box")[:10]:
+        # Mercari 常用穩定 class（比舊版可靠）
+        import re
 
-            title = tag.text.strip()[:50]
+        for match in re.findall(r'href="(/jp/items/[^"]+)"', r.text)[:10]:
 
-            link = tag.find("a")
-            url = "https://www.mercari.com" + link["href"] if link else ""
-
-            img = tag.find("img")
-            image = img["data-src"] if img else ""
+            item_url = "https://www.mercari.com" + match
 
             items.append({
-                "title": title,
+                "title": keyword,
                 "price": 0,
                 "platform": "Mercari",
-                "url": url,
-                "image": image,
+                "url": item_url,
+                "image": "https://via.placeholder.com/300",
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -89,39 +93,29 @@ def search_mercari(keyword):
 
 
 # =========================
-# Yahoo 拍賣（台灣）
+# Yahoo 拍賣（穩定 link 抓法）
 # =========================
 def search_yahoo(keyword):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
 
+    try:
         url = f"https://tw.bid.yahoo.com/search/auction/product?p={urllib.parse.quote(keyword)}"
 
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.text, "lxml")
+        r = requests.get(url, headers=HEADERS, timeout=10)
+
+        import re
 
         items = []
 
-        for tag in soup.select("li")[:10]:
+        links = re.findall(r'href="(https://tw.bid.yahoo.com/item/[^"]+)"', r.text)
 
-            title_tag = tag.find("a")
-            if not title_tag:
-                continue
-
-            title = title_tag.text.strip()
-            url = title_tag["href"]
-
-            img = tag.find("img")
-            image = img["src"] if img else ""
+        for link in links[:10]:
 
             items.append({
-                "title": title,
+                "title": keyword,
                 "price": 0,
                 "platform": "Yahoo",
-                "url": url,
-                "image": image,
+                "url": link,
+                "image": "https://via.placeholder.com/300",
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -143,4 +137,13 @@ def search_all(keyword):
     results += search_mercari(keyword)
     results += search_yahoo(keyword)
 
-    return results
+    # 去重（超重要）
+    seen = set()
+    unique = []
+
+    for r in results:
+        if r["url"] not in seen:
+            seen.add(r["url"])
+            unique.append(r)
+
+    return unique
