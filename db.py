@@ -17,7 +17,7 @@ class Product(Base):
     image = Column(String)
     time = Column(String)
     created_at = Column(DateTime, default=datetime.now)
-
+favorite = Column(Boolean, default=False)
 Base.metadata.create_all(engine)
 
 Session = sessionmaker(bind=engine)
