@@ -11,7 +11,7 @@ from repo import (
 
 st.set_page_config(page_title="Collector Radar", layout="wide")
 
-st.title("⚾ 收藏品雷達")
+st.title("⚾ 收藏品雷達 FINAL")
 
 # ======================
 # 關鍵字
@@ -49,7 +49,7 @@ sort_mode = st.sidebar.selectbox(
 # ======================
 # 更新資料
 # ======================
-if st.button("🔄 更新資料"):
+if st.button("🔄 更新資料（抓 Shopee / Mercari / Yahoo）"):
     all_items = []
 
     for kw in KEYWORDS[category]:
@@ -65,8 +65,11 @@ if st.button("🔄 更新資料"):
 data = get_products()
 df = pd.DataFrame(data)
 
+if not df.empty:
+    df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0)
+
 # ======================
-# filter 最愛
+# filter
 # ======================
 if view_mode == "我的最愛":
     df = df[df["favorite"] == True]
@@ -88,6 +91,7 @@ if not df.empty:
 cols = st.columns(3)
 
 for i, row in df.iterrows():
+
     with cols[i % 3]:
 
         st.image(row["image"])
@@ -109,5 +113,5 @@ for i, row in df.iterrows():
                 remove_favorite(row["url"])
                 st.rerun()
 
-st.subheader("📈 價格歷史")
-st.write("之後會做：走勢圖 / 漲跌分析 / 低價提醒")
+st.subheader("📈 價格歷史（下一版會做圖表）")
+st.write("已具備資料結構，可升級價格趨勢分析")
