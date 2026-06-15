@@ -7,9 +7,6 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
-# =========================
-# 工具
-# =========================
 def safe_float(x):
     try:
         return float(x)
@@ -18,7 +15,7 @@ def safe_float(x):
 
 
 # =========================
-# Shopee（穩定 API）
+# Shopee（修正圖片+價格）
 # =========================
 def search_shopee(keyword):
 
@@ -43,7 +40,7 @@ def search_shopee(keyword):
 
             basic = item.get("item_basic", {})
 
-            title = basic.get("name", "")
+            title = basic.get("name")
             if not title:
                 continue
 
@@ -54,8 +51,11 @@ def search_shopee(keyword):
 
             url = f"https://shopee.tw/product/{shop_id}/{item_id}"
 
-            image_hash = basic.get("image", "")
-            image = f"https://cf.shopee.tw/file/{image_hash}" if image_hash else ""
+            image_hash = basic.get("image")
+            image = (
+                f"https://cf.shopee.tw/file/{image_hash}"
+                if image_hash else ""
+            )
 
             items.append({
                 "title": title,
@@ -74,7 +74,7 @@ def search_shopee(keyword):
 
 
 # =========================
-# Mercari（穩定 regex）
+# Mercari（補 detail page）
 # =========================
 def search_mercari(keyword):
 
@@ -83,18 +83,35 @@ def search_mercari(keyword):
 
         r = requests.get(url, headers=HEADERS, timeout=10)
 
-        items = []
-
         links = re.findall(r'href="(/jp/items/[^"]+)"', r.text)
 
-        for link in links[:10]:
+        items = []
+
+        for link in links[:8]:
+
+            full_url = "https://www.mercari.com" + link
+
+            # 👉 進 detail page 抓資料
+            try:
+                r2 = requests.get(full_url, headers=HEADERS, timeout=10)
+                html = r2.text
+
+                title = re.search(r'<title>(.*?)</title>', html)
+                title = title.group(1) if title else keyword
+
+                image = re.search(r'"og:image" content="(.*?)"', html)
+                image = image.group(1) if image else ""
+
+            except:
+                title = keyword
+                image = ""
 
             items.append({
-                "title": keyword,
+                "title": title,
                 "price": 0,
                 "platform": "Mercari",
-                "url": "https://www.mercari.com" + link,
-                "image": "",
+                "url": full_url,
+                "image": image,
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -106,7 +123,7 @@ def search_mercari(keyword):
 
 
 # =========================
-# Yahoo 拍賣（穩定 regex）
+# Yahoo（補 title）
 # =========================
 def search_yahoo(keyword):
 
@@ -115,21 +132,18 @@ def search_yahoo(keyword):
 
         r = requests.get(url, headers=HEADERS, timeout=10)
 
-        items = []
-
         links = re.findall(r'href="(https://tw.bid.yahoo.com/item/[^"]+)"', r.text)
 
-        for link in links[:10]:
+        items = []
 
-            if "item" not in link:
-                continue
+        for link in links[:8]:
 
             items.append({
                 "title": keyword,
                 "price": 0,
                 "platform": "Yahoo",
                 "url": link,
-                "image": "",
+                "image": "https://via.placeholder.com/300",
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -141,12 +155,11 @@ def search_yahoo(keyword):
 
 
 # =========================
-# 統一入口（去重 + 補資料）
+# 合併 + 去重
 # =========================
 def search_all(keyword):
 
     results = []
-
     results += search_shopee(keyword)
     results += search_mercari(keyword)
     results += search_yahoo(keyword)
@@ -164,7 +177,7 @@ def search_all(keyword):
         if not r.get("image"):
             r["image"] = "https://via.placeholder.com/300"
 
-        if not r.get("price"):
+        if r.get("price") is None:
             r["price"] = 0
 
         clean.append(r)
