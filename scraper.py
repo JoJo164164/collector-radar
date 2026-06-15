@@ -1,18 +1,24 @@
-def safe_float(x):
-    try:
-        return float(x)
-    except:
-        return 0.0
 import requests
 from datetime import datetime
 import urllib.parse
+import re
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
 # =========================
-# Shopee（改 JSON API）
+# 工具
+# =========================
+def safe_float(x):
+    try:
+        return float(x)
+    except:
+        return 0.0
+
+
+# =========================
+# Shopee（穩定 API）
 # =========================
 def search_shopee(keyword):
 
@@ -35,16 +41,21 @@ def search_shopee(keyword):
 
         for item in data.get("items", []):
 
-            item_basic = item.get("item_basic", {})
+            basic = item.get("item_basic", {})
 
-            title = item_basic.get("name", "")
-            price = item_basic.get("price", 0) / 100000
-            shop_id = item_basic.get("shopid")
-            item_id = item_basic.get("itemid")
+            title = basic.get("name", "")
+            if not title:
+                continue
+
+            price = safe_float(basic.get("price", 0)) / 100000
+
+            shop_id = basic.get("shopid")
+            item_id = basic.get("itemid")
 
             url = f"https://shopee.tw/product/{shop_id}/{item_id}"
 
-            image = "https://cf.shopee.tw/file/" + item_basic.get("image", "")
+            image_hash = basic.get("image", "")
+            image = f"https://cf.shopee.tw/file/{image_hash}" if image_hash else ""
 
             items.append({
                 "title": title,
@@ -63,7 +74,7 @@ def search_shopee(keyword):
 
 
 # =========================
-# Mercari（穩定 HTML selector）
+# Mercari（穩定 regex）
 # =========================
 def search_mercari(keyword):
 
@@ -74,19 +85,16 @@ def search_mercari(keyword):
 
         items = []
 
-        # Mercari 常用穩定 class（比舊版可靠）
-        import re
+        links = re.findall(r'href="(/jp/items/[^"]+)"', r.text)
 
-        for match in re.findall(r'href="(/jp/items/[^"]+)"', r.text)[:10]:
-
-            item_url = "https://www.mercari.com" + match
+        for link in links[:10]:
 
             items.append({
                 "title": keyword,
                 "price": 0,
                 "platform": "Mercari",
-                "url": item_url,
-                "image": "https://via.placeholder.com/300",
+                "url": "https://www.mercari.com" + link,
+                "image": "",
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -98,7 +106,7 @@ def search_mercari(keyword):
 
 
 # =========================
-# Yahoo 拍賣（穩定 link 抓法）
+# Yahoo 拍賣（穩定 regex）
 # =========================
 def search_yahoo(keyword):
 
@@ -107,20 +115,21 @@ def search_yahoo(keyword):
 
         r = requests.get(url, headers=HEADERS, timeout=10)
 
-        import re
-
         items = []
 
         links = re.findall(r'href="(https://tw.bid.yahoo.com/item/[^"]+)"', r.text)
 
         for link in links[:10]:
 
+            if "item" not in link:
+                continue
+
             items.append({
                 "title": keyword,
                 "price": 0,
                 "platform": "Yahoo",
                 "url": link,
-                "image": "https://via.placeholder.com/300",
+                "image": "",
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
@@ -132,7 +141,7 @@ def search_yahoo(keyword):
 
 
 # =========================
-# 統一入口
+# 統一入口（去重 + 補資料）
 # =========================
 def search_all(keyword):
 
@@ -142,13 +151,22 @@ def search_all(keyword):
     results += search_mercari(keyword)
     results += search_yahoo(keyword)
 
-    # 去重（超重要）
     seen = set()
-    unique = []
+    clean = []
 
     for r in results:
-        if r["url"] not in seen:
-            seen.add(r["url"])
-            unique.append(r)
 
-    return unique
+        if r["url"] in seen:
+            continue
+
+        seen.add(r["url"])
+
+        if not r.get("image"):
+            r["image"] = "https://via.placeholder.com/300"
+
+        if not r.get("price"):
+            r["price"] = 0
+
+        clean.append(r)
+
+    return clean
