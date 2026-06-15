@@ -56,7 +56,7 @@ if st.button("🔄 更新資料（抓 Shopee / Mercari / Yahoo）"):
         results = search_all(kw)
         all_items += results
 
-    save_products(all_items)
+    save_products(session, Product, all_items)
     st.success("更新完成")
 
 # ======================
