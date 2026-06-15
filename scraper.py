@@ -1,25 +1,21 @@
 from datetime import datetime
 
 def search_all(keyword):
-    """
-    模擬 Shopee / Mercari / Yahoo 搜尋結果
-    下一步我們才換成真爬蟲
-    """
 
     return [
         {
-            "title": f"{keyword} - Shopee sample",
+            "title": f"{keyword} - Shopee",
             "price": 1200,
             "platform": "Shopee",
-            "url": "https://shopee.tw/sample1",
+            "url": f"https://shopee.tw/{keyword}",
             "image": "https://via.placeholder.com/300",
             "time": datetime.now().strftime("%Y-%m-%d %H:%M")
         },
         {
-            "title": f"{keyword} - Mercari sample",
+            "title": f"{keyword} - Mercari",
             "price": 2000,
             "platform": "Mercari",
-            "url": "https://mercari.com/sample2",
+            "url": f"https://mercari.com/{keyword}",
             "image": "https://via.placeholder.com/300",
             "time": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
