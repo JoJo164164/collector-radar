@@ -1,12 +1,21 @@
 import streamlit as st
 import pandas as pd
+
 from scraper import search_all
-from repo import save_products, get_products
+from repo import (
+    save_products,
+    get_products,
+    add_favorite,
+    remove_favorite
+)
 
 st.set_page_config(page_title="Collector Radar", layout="wide")
 
-st.title("⚾ 收藏品雷達（B版歷史系統）")
+st.title("⚾ 收藏品雷達")
 
+# ======================
+# 關鍵字
+# ======================
 KEYWORDS = {
     "啦啦隊簽名球": [
         "啦啦隊簽名球",
@@ -22,10 +31,25 @@ KEYWORDS = {
     ]
 }
 
+# ======================
+# sidebar
+# ======================
 category = st.sidebar.selectbox("類別", list(KEYWORDS.keys()))
 
-if st.button("🔄 更新資料（抓新商品）"):
+view_mode = st.sidebar.radio(
+    "觀看模式",
+    ["全部商品", "我的最愛"]
+)
 
+sort_mode = st.sidebar.selectbox(
+    "排序",
+    ["最新", "價格低到高", "價格高到低"]
+)
+
+# ======================
+# 更新資料
+# ======================
+if st.button("🔄 更新資料"):
     all_items = []
 
     for kw in KEYWORDS[category]:
@@ -33,32 +57,57 @@ if st.button("🔄 更新資料（抓新商品）"):
         all_items += results
 
     save_products(all_items)
-
     st.success("更新完成")
 
-# 讀取歷史資料
+# ======================
+# 讀資料
+# ======================
 data = get_products()
 df = pd.DataFrame(data)
 
-# 排序
-sort = st.sidebar.selectbox(
-    "排序",
-    ["最新", "價格低到高", "價格高到低"]
-)
+# ======================
+# filter 最愛
+# ======================
+if view_mode == "我的最愛":
+    df = df[df["favorite"] == True]
 
+# ======================
+# sort
+# ======================
 if not df.empty:
-    if sort == "價格低到高":
+    if sort_mode == "價格低到高":
         df = df.sort_values("price")
-    elif sort == "價格高到低":
+    elif sort_mode == "價格高到低":
         df = df.sort_values("price", ascending=False)
+    else:
+        df = df.sort_values("time", ascending=False)
 
+# ======================
+# UI
+# ======================
 cols = st.columns(3)
 
 for i, row in df.iterrows():
     with cols[i % 3]:
+
         st.image(row["image"])
         st.write(row["title"])
         st.write(f"💰 {row['price']}")
         st.write(f"🏪 {row['platform']}")
         st.write(f"🕒 {row['time']}")
         st.write(f"[連結]({row['url']})")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("⭐ 收藏", key=f"fav_{i}"):
+                add_favorite(row["url"])
+                st.rerun()
+
+        with col2:
+            if st.button("❌ 取消", key=f"unfav_{i}"):
+                remove_favorite(row["url"])
+                st.rerun()
+
+st.subheader("📈 價格歷史")
+st.write("之後會做：走勢圖 / 漲跌分析 / 低價提醒")
