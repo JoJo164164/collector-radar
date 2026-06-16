@@ -41,25 +41,10 @@ import requests
 
 def fetch_html(url):
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu"
-                ]
-            )
-
-            page = browser.new_page()
-            page.goto(url, timeout=30000)
-            page.wait_for_timeout(1500)
-
-            html = page.content()
-            browser.close()
-
-            return html
+        r = requests.get(url, timeout=10)
+        return r.text
+    except:
+        return ""
 
     except Exception as e:
         print("Playwright failed, fallback requests:", e)
