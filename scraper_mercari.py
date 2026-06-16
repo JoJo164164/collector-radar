@@ -1,10 +1,4 @@
 import requests
-from model import Product
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
-
 
 def scrape_mercari(keyword, limit=20):
 
@@ -16,29 +10,22 @@ def scrape_mercari(keyword, limit=20):
     }
 
     try:
-        r = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        r = requests.get(url, params=params, timeout=10)
         data = r.json()
     except:
         return []
 
     results = []
 
-    items = data.get("items", [])
-
-    for item in items:
+    for item in data.get("items", []):
         try:
-            title = item.get("name")
-            price = item.get("price")
-            url = "https://www.mercari.com/us/item/" + item.get("id")
-            image = item.get("photo_url")
-
-            results.append(Product(
-                title=title,
-                price=str(price),
-                url=url,
-                image=image,
-                source="mercari"
-            ))
+            results.append({
+                "title": item["name"],
+                "price": item.get("price"),
+                "url": "https://www.mercari.com/us/item/" + item["id"],
+                "image": item.get("photo_url"),
+                "source": "mercari"
+            })
 
         except:
             continue
