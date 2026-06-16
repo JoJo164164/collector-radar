@@ -1,7 +1,7 @@
 import streamlit as st
 from engine import search_all
 
-st.title("📡 Collector Radar v5 (REAL DATA)")
+st.title("📡 Collector Radar v5")
 
 keyword = st.text_input("keyword")
 
@@ -13,25 +13,27 @@ sources = st.multiselect(
 
 if st.button("search"):
 
+    if not keyword:
+        st.warning("enter keyword")
+        st.stop()
+
     results = search_all(keyword, sources)
 
     if not results:
         st.error("no results")
         st.stop()
 
-  for r in results:
-    st.markdown("---")
+    for r in results:
 
-    st.write("🏪", r["source"])
-    st.write("📦", r["title"])
+        st.markdown("---")
 
-    if r.get("price"):
-        st.write("💰", r["price"])
+        st.write("🏪", r["source"])
+        st.write("📦", r["title"])
 
-    if r.get("image"):
-        st.image(r["image"], width=120)
+        if r.get("price"):
+            st.write("💰", r["price"])
 
-    st.write("🔗", r["url"])
+        if r.get("image"):
+            st.image(r["image"], width=150)
 
-        if r.image:
-            st.image(r.image, width=150)
+        st.write("🔗", r["url"])
