@@ -2,249 +2,123 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import random
-import re
 
-# =========================
-# Headers
-# =========================
 UA = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/121 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) Chrome/120 Safari/537.36",
+    "Mozilla/5.0 Chrome/122",
+    "Mozilla/5.0 Chrome/121",
+    "Mozilla/5.0 Safari"
 ]
 
 def headers():
-    return {
-        "User-Agent": random.choice(UA),
-        "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
-    }
+    return {"User-Agent": random.choice(UA)}
 
-
-# =========================
-# SAFE PARSER
-# =========================
-def clean_price(text):
-    if not text:
-        return 0.0
-    try:
-        num = re.sub(r"[^0-9.]", "", text)
-        return float(num) if num else 0.0
-    except:
-        return 0.0
-
-
-# =========================
-# PLAYWRIGHT FETCH
-# =========================
-
-import requests
 
 def fetch_html(url):
     try:
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, headers=headers(), timeout=10)
         return r.text
     except:
         return ""
 
-    except Exception as e:
-        print("Playwright failed, fallback requests:", e)
 
-        # 🔥 fallback（避免 app crash）
-        try:
-            r = requests.get(url, timeout=10)
-            return r.text
-        except:
-            return ""
-
-# =========================
-# SHOPEE (JS RENDERED)
-# =========================
-def scrape_shopee(keyword, limit=20):
-
-    url = f"https://shopee.tw/search?keyword={keyword}"
-
-    html = fetch_html(url)
-
-    # ❗ fallback protection
-    if not html:
-        return []
-
-    soup = BeautifulSoup(html, "lxml")
-
-    results = []
-
-    for a in soup.select("a"):
-        title = a.get_text(" ", strip=True)
-
-        if not title:
-            continue
-
-        if len(title) < 5:
-            continue
-
-        if keyword.lower() not in title.lower():
-            continue
-
-        img = a.find("img")
-
-        results.append({
-            "title": title[:100],
-            "price": 0.0,
-            "platform": "Shopee",
-            "url": url,
-            "image": img["src"] if img and img.get("src") else "",
-            "time": datetime.utcnow().isoformat()
-        })
-
-        if len(results) >= limit:
-            break
-
-    return results
-
-# =========================
-# MERCARI (JS RENDERED)
-# =========================
-def scrape_mercari(keyword, limit=20):
-    url = f"https://www.mercari.com/jp/search/?keyword={keyword}"
-
-    html = fetch_html(url)
-    soup = BeautifulSoup(html, "lxml")
-
-    results = []
-
-    for a in soup.select("a"):
-        text = a.get_text(" ", strip=True)
-
-        if len(text) < 5:
-            continue
-
-        if keyword.lower() not in text.lower():
-            continue
-
-        img = a.find("img")
-
-        href = a.get("href", "")
-        if not href:
-            continue
-
-        if href.startswith("/"):
-            href = "https://www.mercari.com" + href
-
-        results.append({
-            "title": text[:100],
-            "price": 0.0,
-            "platform": "Mercari",
-            "url": href,
-            "image": img["src"] if img and img.get("src") else "",
-            "time": datetime.utcnow().isoformat()
-        })
-
-        if len(results) >= limit:
-            break
-
-    return results
-
-
-# =========================
-# YAHOO (requests)
-# =========================
+# -------------------------
+# Yahoo (stable)
+# -------------------------
 def scrape_yahoo(keyword, limit=20):
     url = f"https://tw.bid.yahoo.com/search/auction/product?p={keyword}"
+    html = fetch_html(url)
 
-    try:
-        r = requests.get(url, headers=headers(), timeout=10)
-        if r.status_code != 200:
-            return []
+    soup = BeautifulSoup(html, "lxml")
+    results = []
 
-        soup = BeautifulSoup(r.text, "lxml")
-        results = []
+    for a in soup.select("a"):
+        t = a.get_text(strip=True)
 
-        for a in soup.select("a"):
-            title = a.get_text(" ", strip=True)
+        if len(t) < 5:
+            continue
 
-            if len(title) < 5:
-                continue
+        results.append({
+            "title": t,
+            "price": 0,
+            "platform": "Yahoo",
+            "url": url,
+            "image": "",
+            "time": datetime.utcnow().isoformat()
+        })
 
-            if keyword.lower() not in title.lower():
-                continue
+        if len(results) >= limit:
+            break
 
-            results.append({
-                "title": title[:100],
-                "price": 0.0,
-                "platform": "Yahoo",
-                "url": url,
-                "image": "",
-                "time": datetime.utcnow().isoformat()
-            })
-
-            if len(results) >= limit:
-                break
-
-        return results
-
-    except:
-        return []
+    return results
 
 
-# =========================
-# EBAY (requests stable)
-# =========================
-def scrape_ebay(keyword, limit=20):
-    url = f"https://www.ebay.com/sch/i.html?_nkw={keyword}"
+# -------------------------
+# Shopee (best-effort HTML)
+# -------------------------
+def scrape_shopee(keyword, limit=20):
+    url = f"https://shopee.tw/search?keyword={keyword}"
+    html = fetch_html(url)
 
-    try:
-        r = requests.get(url, headers=headers(), timeout=10)
-        if r.status_code != 200:
-            return []
-
-        soup = BeautifulSoup(r.text, "lxml")
-        results = []
-
-        for item in soup.select("li.s-item"):
-            title = item.select_one(".s-item__title")
-            price = item.select_one(".s-item__price")
-            img = item.select_one("img")
-            link = item.select_one("a")
-
-            if not title or not link:
-                continue
-
-            results.append({
-                "title": title.text.strip(),
-                "price": clean_price(price.text if price else ""),
-                "platform": "eBay",
-                "url": link["href"],
-                "image": img["src"] if img else "",
-                "time": datetime.utcnow().isoformat()
-            })
-
-            if len(results) >= limit:
-                break
-
-        return results
-
-    except:
-        return []
-
-
-# =========================
-# ROUTER
-# =========================
-def search_all(keyword, sources=None):
-    sources = sources or ["shopee", "mercari", "yahoo", "ebay"]
+    soup = BeautifulSoup(html, "lxml")
 
     results = []
 
-    if "shopee" in sources:
-        results += scrape_shopee(keyword)
+    for a in soup.select("a"):
+        t = a.get_text(strip=True)
 
-    if "mercari" in sources:
-        results += scrape_mercari(keyword)
+        if len(t) < 5:
+            continue
 
-    if "yahoo" in sources:
-        results += scrape_yahoo(keyword)
+        results.append({
+            "title": t,
+            "price": 0,
+            "platform": "Shopee",
+            "url": url,
+            "image": "",
+            "time": datetime.utcnow().isoformat()
+        })
 
-    if "ebay" in sources:
-        results += scrape_ebay(keyword)
+        if len(results) >= limit:
+            break
+
+    return results
+
+
+# -------------------------
+# Mercari fallback
+# -------------------------
+def scrape_mercari(keyword):
+    return []
+
+
+# -------------------------
+# eBay (stable)
+# -------------------------
+def scrape_ebay(keyword, limit=20):
+    url = f"https://www.ebay.com/sch/i.html?_nkw={keyword}"
+    html = fetch_html(url)
+
+    soup = BeautifulSoup(html, "lxml")
+
+    results = []
+
+    for item in soup.select("li.s-item"):
+        title = item.select_one(".s-item__title")
+        link = item.select_one("a")
+
+        if not title or not link:
+            continue
+
+        results.append({
+            "title": title.text,
+            "price": 0,
+            "platform": "eBay",
+            "url": link["href"],
+            "image": "",
+            "time": datetime.utcnow().isoformat()
+        })
+
+        if len(results) >= limit:
+            break
 
     return results
