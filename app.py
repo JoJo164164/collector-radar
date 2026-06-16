@@ -25,15 +25,15 @@ if st.button("search"):
 
     for r in results:
 
-        st.markdown("---")
+    st.markdown("---")
 
-        st.write("🏪", r.get("source", "unknown"))
-        st.write("📦", r.get("title", "no title"))
+    st.write("🏪", r.get("source", "unknown"))
+    st.write("📦", r.get("title", "no title"))
 
-        if r.get("price"):
-            st.write("💰", r["price"])
+    if r.get("price"):
+        st.write("💰", r.get("price"))
 
-        if r.get("image"):
-            st.image(r["image"], width=150)
+    if r.get("image"):
+        st.image(r.get("image"), width=150)
 
-        st.write("🔗", r.get("url", ""))
+    st.write("🔗", r.get("url", ""))
