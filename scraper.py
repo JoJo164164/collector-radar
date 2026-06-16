@@ -1,132 +1,47 @@
-import random
-import requests
 from bs4 import BeautifulSoup
+from browser import fetch_html
 from datetime import datetime
-
-# =====================
-# Headers
-# =====================
-UA = [
-    "Mozilla/5.0 Chrome/122",
-    "Mozilla/5.0 Chrome/121",
-    "Mozilla/5.0 Safari/537.36"
-]
-
-def headers():
-    return {"User-Agent": random.choice(UA)}
+import json
 
 
-# =====================
-# Yahoo (穩定來源)
-# =====================
-def scrape_yahoo(keyword, limit=30):
-    url = f"https://tw.bid.yahoo.com/search/auction/product?p={keyword}"
-    r = requests.get(url, headers=headers(), timeout=10)
+def scrape_shopee(keyword, limit=20):
 
-    if r.status_code != 200:
-        return []
+    url = f"https://shopee.tw/search?keyword={keyword}"
 
-    soup = BeautifulSoup(r.text, "lxml")
+    html = fetch_html(url)
+
+    soup = BeautifulSoup(html, "lxml")
 
     results = []
 
-    for a in soup.select("a"):
-        title = a.get_text(strip=True)
+    # Shopee 2026 DOM (JSON embedded)
+    scripts = soup.find_all("script")
 
-        if len(title) < 5:
-            continue
+    for s in scripts:
+        if "itemCardList" in str(s):
+            try:
+                text = str(s)
+                start = text.find("{")
+                data = json.loads(text[start:])
 
-        if keyword.lower() not in title.lower():
-            continue
+                items = data.get("items", [])
 
-        results.append({
-            "title": title[:100],
-            "price": 0.0,
-            "platform": "Yahoo",
-            "url": url,
-            "image": "",
-            "time": datetime.utcnow().isoformat()
-        })
+                for i in items[:limit]:
 
-        if len(results) >= limit:
-            break
+                    item = i.get("item_basic", {})
 
-    return results
+                    results.append({
+                        "title": item.get("name"),
+                        "price": item.get("price") / 100000,
+                        "platform": "Shopee",
+                        "url": "https://shopee.tw/product/" + str(item.get("itemid")),
+                        "image": "https://cf.shopee.tw/file/" + item.get("image"),
+                        "time": datetime.utcnow().isoformat()
+                    })
 
+                break
 
-# =====================
-# eBay (穩定 + 可用)
-# =====================
-def scrape_ebay(keyword, limit=30):
-    url = f"https://www.ebay.com/sch/i.html?_nkw={keyword}"
-    r = requests.get(url, headers=headers(), timeout=10)
-
-    if r.status_code != 200:
-        return []
-
-    soup = BeautifulSoup(r.text, "lxml")
-    results = []
-
-    for item in soup.select("li.s-item"):
-        title = item.select_one(".s-item__title")
-        price = item.select_one(".s-item__price")
-        img = item.select_one("img")
-        link = item.select_one("a")
-
-        if not title or not link:
-            continue
-
-        results.append({
-            "title": title.text,
-            "price": parse_price(price.text if price else "0"),
-            "platform": "eBay",
-            "url": link["href"],
-            "image": img["src"] if img else "",
-            "time": datetime.utcnow().isoformat()
-        })
-
-        if len(results) >= limit:
-            break
-
-    return results
-
-
-def parse_price(text):
-    try:
-        return float("".join([c for c in text if (c.isdigit() or c == ".")]))
-    except:
-        return 0.0
-
-
-# =====================
-# Shopee / Mercari（現實限制）
-# =====================
-def scrape_shopee(keyword):
-    # JS + anti bot → 先 fallback
-    return []
-
-
-def scrape_mercari(keyword):
-    # Cloudflare / API restricted
-    return []
-
-
-# =====================
-# Router
-# =====================
-def search_all(keyword, sources):
-    results = []
-
-    if "yahoo" in sources:
-        results += scrape_yahoo(keyword)
-
-    if "ebay" in sources:
-        results += scrape_ebay(keyword)
-
-    if "shopee" in sources:
-        results += scrape_shopee(keyword)
-
-    if "mercari" in sources:
-        results += scrape_mercari(keyword)
+            except:
+                continue
 
     return results
