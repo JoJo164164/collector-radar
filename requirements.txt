@@ -5,5 +5,3 @@ beautifulsoup4
 lxml
 sqlalchemy
 playwright
-pyee
-greenlet
