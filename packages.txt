@@ -1,6 +1,0 @@
-libglib2.0-0
-libnss3
-libx11-6
-libatk1.0-0
-libgtk-3-0
-libgbm1
