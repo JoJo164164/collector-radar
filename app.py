@@ -1,20 +1,17 @@
 import streamlit as st
 import pandas as pd
-from scraper_v4 import search_all
+from scraper_v5 import search_all
 
-st.set_page_config(page_title="Collector Radar V4", layout="wide")
+st.set_page_config(layout="wide")
 
-st.title("📡 Collector Radar V4")
+st.title("📡 Collector Radar V5")
 
-# =====================
-# UI
-# =====================
 keyword = st.text_input("搜尋商品")
 
 sources = st.multiselect(
     "平台",
-    ["yahoo", "ebay", "shopee", "mercari"],
-    default=["yahoo", "ebay"]
+    ["shopee", "mercari", "yahoo"],
+    default=["shopee", "mercari"]
 )
 
 sort = st.selectbox(
@@ -27,14 +24,11 @@ if st.button("搜尋"):
     data = search_all(keyword, sources)
 
     if not data:
-        st.warning("沒有資料")
+        st.warning("沒有資料（可能被擋或關鍵字無結果）")
         st.stop()
 
     df = pd.DataFrame(data)
 
-    # =====================
-    # 排序
-    # =====================
     if sort == "價格低→高":
         df = df.sort_values("price")
     elif sort == "價格高→低":
@@ -42,9 +36,6 @@ if st.button("搜尋"):
 
     st.success(f"找到 {len(df)} 筆")
 
-    # =====================
-    # 卡片 UI
-    # =====================
     cols = st.columns(3)
 
     for i, row in df.iterrows():
@@ -58,6 +49,6 @@ if st.button("搜尋"):
             if row["image"]:
                 st.image(row["image"])
 
-            st.write(f"🕒 {row['time']}")
+            st.write(row["time"])
 
-            st.link_button("開啟", row["url"])
+            st.link_button("查看", row["url"])
