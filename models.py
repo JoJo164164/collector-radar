@@ -1,16 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean
-from sqlalchemy.orm import declarative_base
+from dataclasses import dataclass
+from typing import Optional
 
-Base = declarative_base()
-
-class Product(Base):
-    __tablename__ = "products"
-
-    id = Column(Integer, primary_key=True)
-    title = Column(String)
-    price = Column(Float)
-    platform = Column(String)
-    url = Column(String, unique=True)
-    image = Column(String)
-    time = Column(String)
-    favorite = Column(Boolean, default=False)
+@dataclass
+class Product:
+    title: str
+    price: Optional[str]
+    url: str
+    image: Optional[str]
+    source: str
