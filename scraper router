@@ -1,0 +1,14 @@
+def search_all(keyword, sources):
+
+    results = []
+
+    if "shopee" in sources:
+        results += scrape_shopee(keyword)
+
+    if "mercari" in sources:
+        results += scrape_mercari(keyword)
+
+    if "yahoo" in sources:
+        results += scrape_yahoo(keyword)
+
+    return results
