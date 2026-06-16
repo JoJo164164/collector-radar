@@ -19,16 +19,19 @@ if st.button("search"):
         st.error("no results")
         st.stop()
 
-    for r in results:
-        st.markdown("---")
+  for r in results:
+    st.markdown("---")
 
-        st.write("🏪", r.source)
-        st.write("📦", r.title)
+    st.write("🏪", r["source"])
+    st.write("📦", r["title"])
 
-        if r.price:
-            st.write("💰", r.price)
+    if r.get("price"):
+        st.write("💰", r["price"])
 
-        st.write("🔗", r.url)
+    if r.get("image"):
+        st.image(r["image"], width=120)
+
+    st.write("🔗", r["url"])
 
         if r.image:
             st.image(r.image, width=150)
