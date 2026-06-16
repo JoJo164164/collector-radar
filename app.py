@@ -33,7 +33,7 @@ if st.button("search"):
         st.write("🏪", r.get("source", "unknown"))
         st.write("📦", r.get("title", "no title"))
 
-        if r.get("price") is not None:
+        if r.get("price"):
             st.write("💰", r.get("price"))
 
         if r.get("image"):
