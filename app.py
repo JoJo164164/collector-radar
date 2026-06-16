@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from scraper.py import search_all
+from scraper import search_all
 
 st.set_page_config(layout="wide")
 
