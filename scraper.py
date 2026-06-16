@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from playwright.sync_api import sync_playwright
 import random
 import re
 
@@ -37,7 +36,7 @@ def clean_price(text):
 # =========================
 # PLAYWRIGHT FETCH
 # =========================
-from playwright.sync_api import sync_playwright
+
 import requests
 
 def fetch_html(url):
