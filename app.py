@@ -28,8 +28,7 @@ if st.button("search"):
         st.markdown("---")
 
         st.write("🏪", r.get("source", "unknown"))
-st.write("📦", r.get("title", "no title"))
-        st.write("📦", r["title"])
+        st.write("📦", r.get("title", "no title"))
 
         if r.get("price"):
             st.write("💰", r["price"])
@@ -37,4 +36,4 @@ st.write("📦", r.get("title", "no title"))
         if r.get("image"):
             st.image(r["image"], width=150)
 
-        st.write("🔗", r["url"])
+        st.write("🔗", r.get("url", ""))
