@@ -1,29 +1,26 @@
 from models import Product
 
 def save_products(session, items):
+
     for item in items:
 
         if not isinstance(item, dict):
             continue
 
-        url = item.get("url")
-        title = item.get("title")
-
-        # 防呆
-        if not url or not title:
+        if not item.get("url") or not item.get("title"):
             continue
 
-        exists = session.query(Product).filter_by(url=url).first()
+        exists = session.query(Product).filter_by(url=item["url"]).first()
         if exists:
             continue
 
-        product = Product(
-            title=title,
-            url=url,
-            price=item.get("price"),
-            image=item.get("image")
-        )
-
-        session.add(product)
+        session.add(Product(
+            title=item["title"],
+            url=item["url"],
+            price=float(item.get("price") or 0),
+            image=item.get("image") or "",
+            platform=item.get("platform") or "",
+            time=item.get("time") or ""
+        ))
 
     session.commit()
