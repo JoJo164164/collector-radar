@@ -1,64 +1,30 @@
-# app.py
 import streamlit as st
-from scraper import search_all
+from engine import search_all
 
-st.set_page_config(page_title="Collector Radar v3", layout="wide")
+st.title("📡 Collector Radar (No Install / No Browser)")
 
-st.title("📡 Collector Radar v3 (Multi-market search)")
-
-# =========================
-# Input
-# =========================
-
-keyword = st.text_input("Search product keyword", "")
+keyword = st.text_input("keyword")
 
 sources = st.multiselect(
-    "Select platforms",
-    ["yahoo", "shopee", "ebay", "mercari"],
-    default=["yahoo", "shopee", "ebay", "mercari"]
+    "sources",
+    ["yahoo", "ebay", "shopee", "mercari"],
+    default=["yahoo", "ebay", "shopee", "mercari"]
 )
 
-# =========================
-# Search Button
-# =========================
-
-if st.button("Search"):
+if st.button("search"):
 
     if not keyword:
-        st.warning("Please enter keyword")
+        st.warning("enter keyword")
         st.stop()
 
-    with st.spinner("Searching..."):
-
-        results = search_all(keyword, sources)
-
-    # =========================
-    # No results handling
-    # =========================
+    results = search_all(keyword, sources)
 
     if not results:
-        st.error("No results found (可能被 blocking 或無資料)")
+        st.error("no results")
         st.stop()
 
-    # =========================
-    # Render results
-    # =========================
-
-    st.success(f"Found {len(results)} results")
-
     for r in results:
-
         st.markdown("---")
-
-        st.subheader(r.title)
-
-        col1, col2 = st.columns([1, 3])
-
-        with col1:
-            st.write("🏪", r.source)
-
-        with col2:
-            if r.price:
-                st.write("💰", r.price)
-
-            st.write("🔗", r.url)
+        st.write("🏪", r["source"])
+        st.write("📦", r["title"])
+        st.write("🔗", r["url"])
