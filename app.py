@@ -1,47 +1,64 @@
+# app.py
 import streamlit as st
-import pandas as pd
-from scraper_router import search_all
+from scraper import search_all
 
-st.set_page_config(page_title="Collector Radar V6", layout="wide")
+st.set_page_config(page_title="Collector Radar v3", layout="wide")
 
-st.title("📡 Collector Radar V6")
+st.title("📡 Collector Radar v3 (Multi-market search)")
 
-keyword = st.text_input("搜尋商品")
+# =========================
+# Input
+# =========================
+
+keyword = st.text_input("Search product keyword", "")
 
 sources = st.multiselect(
-    "平台",
+    "Select platforms",
     ["yahoo", "shopee", "ebay", "mercari"],
-    default=["yahoo", "ebay"]
+    default=["yahoo", "shopee", "ebay", "mercari"]
 )
 
-sort = st.selectbox("排序", ["最新", "價格低→高", "價格高→低"])
+# =========================
+# Search Button
+# =========================
 
-if st.button("搜尋"):
+if st.button("Search"):
 
-    data = search_all(keyword, sources)
-
-    if not data:
-        st.warning("沒有資料")
+    if not keyword:
+        st.warning("Please enter keyword")
         st.stop()
 
-    df = pd.DataFrame(data)
+    with st.spinner("Searching..."):
 
-    if sort == "價格低→高":
-        df = df.sort_values("price")
-    elif sort == "價格高→低":
-        df = df.sort_values("price", ascending=False)
+        results = search_all(keyword, sources)
 
-    st.success(f"找到 {len(df)} 筆")
+    # =========================
+    # No results handling
+    # =========================
 
-    cols = st.columns(3)
+    if not results:
+        st.error("No results found (可能被 blocking 或無資料)")
+        st.stop()
 
-    for i, row in df.iterrows():
+    # =========================
+    # Render results
+    # =========================
 
-        with cols[i % 3]:
+    st.success(f"Found {len(results)} results")
 
-            st.markdown(f"### {row['title']}")
-            st.write(f"🏪 {row['platform']}")
-            st.write(f"💰 {row['price']}")
-            st.write(row["time"])
+    for r in results:
 
-            st.link_button("查看", row["url"])
+        st.markdown("---")
+
+        st.subheader(r.title)
+
+        col1, col2 = st.columns([1, 3])
+
+        with col1:
+            st.write("🏪", r.source)
+
+        with col2:
+            if r.price:
+                st.write("💰", r.price)
+
+            st.write("🔗", r.url)
