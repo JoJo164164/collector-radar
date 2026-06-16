@@ -1,1 +1,1 @@
-playwright install chromium
+echo "No post-install steps needed"
