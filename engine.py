@@ -1,11 +1,7 @@
-def to_dict(p):
-    return {
-        "title": getattr(p, "title", None) if not isinstance(p, dict) else p.get("title"),
-        "price": getattr(p, "price", None) if not isinstance(p, dict) else p.get("price"),
-        "url": getattr(p, "url", None) if not isinstance(p, dict) else p.get("url"),
-        "image": getattr(p, "image", None) if not isinstance(p, dict) else p.get("image"),
-        "source": getattr(p, "source", None) if not isinstance(p, dict) else p.get("source"),
-    }
+from scraper_shopee import scrape_shopee
+from scraper_mercari import scrape_mercari
+from scraper_ebay import scrape_ebay
+from scraper_yahoo import scrape_yahoo
 
 
 def search_all(keyword, sources):
@@ -24,4 +20,4 @@ def search_all(keyword, sources):
     if "yahoo" in sources:
         results += scrape_yahoo(keyword)
 
-    return [to_dict(r) for r in results]
+    return results
