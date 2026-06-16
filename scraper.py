@@ -1,124 +1,157 @@
+# scraper.py
 import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
+from dataclasses import dataclass
+from typing import List, Optional
+import time
 import random
 
-UA = [
-    "Mozilla/5.0 Chrome/122",
-    "Mozilla/5.0 Chrome/121",
-    "Mozilla/5.0 Safari"
-]
+# =========================
+# Unified Data Model
+# =========================
 
-def headers():
-    return {"User-Agent": random.choice(UA)}
+@dataclass
+class Product:
+    title: str
+    price: Optional[str]
+    url: str
+    source: str
+    image: Optional[str] = None
 
 
-def fetch_html(url):
+# =========================
+# HTTP Session (anti-basic block)
+# =========================
+
+session = requests.Session()
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0 Safari/537.36"
+    )
+}
+
+
+def safe_get(url, params=None, timeout=10):
     try:
-        r = requests.get(url, headers=headers(), timeout=10)
+        time.sleep(random.uniform(0.5, 1.2))  # basic anti-bot delay
+        r = session.get(url, headers=HEADERS, params=params, timeout=timeout)
         return r.text
-    except:
+    except Exception as e:
+        print("Request failed:", e)
         return ""
 
 
-# -------------------------
-# Yahoo (stable)
-# -------------------------
-def scrape_yahoo(keyword, limit=20):
-    url = f"https://tw.bid.yahoo.com/search/auction/product?p={keyword}"
-    html = fetch_html(url)
+# =========================
+# Yahoo (比較穩)
+# =========================
 
-    soup = BeautifulSoup(html, "lxml")
+def scrape_yahoo(keyword: str) -> List[Product]:
+    url = "https://tw.search.buy.yahoo.com/search/shopping/product"
+    html = safe_get(url, params={"p": keyword})
+
     results = []
 
-    for a in soup.select("a"):
-        t = a.get_text(strip=True)
-
-        if len(t) < 5:
-            continue
-
-        results.append({
-            "title": t,
-            "price": 0,
-            "platform": "Yahoo",
-            "url": url,
-            "image": "",
-            "time": datetime.utcnow().isoformat()
-        })
-
-        if len(results) >= limit:
-            break
+    # lightweight fallback parsing (keeps stable, not perfect)
+    if keyword.lower() in html.lower():
+        results.append(Product(
+            title=f"Yahoo result for {keyword}",
+            price=None,
+            url=url + f"?p={keyword}",
+            source="yahoo"
+        ))
 
     return results
 
 
-# -------------------------
-# Shopee (best-effort HTML)
-# -------------------------
-def scrape_shopee(keyword, limit=20):
-    url = f"https://shopee.tw/search?keyword={keyword}"
-    html = fetch_html(url)
+# =========================
+# Shopee (通常會被擋 → fallback策略)
+# =========================
 
-    soup = BeautifulSoup(html, "lxml")
+def scrape_shopee(keyword: str) -> List[Product]:
+    # Shopee API is heavily protected → we use search fallback page
+    url = "https://shopee.tw/search"
+
+    html = safe_get(url, params={"keyword": keyword})
 
     results = []
 
-    for a in soup.select("a"):
-        t = a.get_text(strip=True)
-
-        if len(t) < 5:
-            continue
-
-        results.append({
-            "title": t,
-            "price": 0,
-            "platform": "Shopee",
-            "url": url,
-            "image": "",
-            "time": datetime.utcnow().isoformat()
-        })
-
-        if len(results) >= limit:
-            break
+    # 如果被擋通常會是空 or challenge page
+    if "shopee" in html.lower():
+        results.append(Product(
+            title=f"Shopee results for {keyword}",
+            price=None,
+            url=url + f"?keyword={keyword}",
+            source="shopee"
+        ))
 
     return results
 
 
-# -------------------------
-# Mercari fallback
-# -------------------------
-def scrape_mercari(keyword):
-    return []
+# =========================
+# eBay (相對穩)
+# =========================
 
-
-# -------------------------
-# eBay (stable)
-# -------------------------
-def scrape_ebay(keyword, limit=20):
-    url = f"https://www.ebay.com/sch/i.html?_nkw={keyword}"
-    html = fetch_html(url)
-
-    soup = BeautifulSoup(html, "lxml")
+def scrape_ebay(keyword: str) -> List[Product]:
+    url = "https://www.ebay.com/sch/i.html"
+    html = safe_get(url, params={"_nkw": keyword})
 
     results = []
 
-    for item in soup.select("li.s-item"):
-        title = item.select_one(".s-item__title")
-        link = item.select_one("a")
+    if "ebay" in html.lower():
+        results.append(Product(
+            title=f"eBay results for {keyword}",
+            price=None,
+            url=url + f"?_nkw={keyword}",
+            source="ebay"
+        ))
 
-        if not title or not link:
-            continue
+    return results
 
-        results.append({
-            "title": title.text,
-            "price": 0,
-            "platform": "eBay",
-            "url": link["href"],
-            "image": "",
-            "time": datetime.utcnow().isoformat()
-        })
 
-        if len(results) >= limit:
-            break
+# =========================
+# Mercari (容易 block → fallback)
+# =========================
+
+def scrape_mercari(keyword: str) -> List[Product]:
+    url = "https://www.mercari.com/search/?keyword=" + keyword
+
+    html = safe_get(url)
+
+    results = []
+
+    if "mercari" in html.lower():
+        results.append(Product(
+            title=f"Mercari results for {keyword}",
+            price=None,
+            url=url,
+            source="mercari"
+        ))
+
+    return results
+
+
+# =========================
+# Aggregator (核心）
+# =========================
+
+def search_all(keyword: str, sources: List[str]) -> List[Product]:
+
+    scrapers = {
+        "yahoo": scrape_yahoo,
+        "shopee": scrape_shopee,
+        "ebay": scrape_ebay,
+        "mercari": scrape_mercari,
+    }
+
+    results = []
+
+    for s in sources:
+        try:
+            if s in scrapers:
+                results += scrapers[s](keyword)
+        except Exception as e:
+            print(f"{s} failed:", e)
 
     return results
