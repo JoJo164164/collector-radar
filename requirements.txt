@@ -1,7 +1,5 @@
-streamlit
-pandas
+playwright
 requests
 beautifulsoup4
 lxml
-sqlalchemy
-playwright
+streamlit
