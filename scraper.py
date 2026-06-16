@@ -38,31 +38,39 @@ def clean_price(text):
 # PLAYWRIGHT FETCH
 # =========================
 from playwright.sync_api import sync_playwright
+import requests
 
 def fetch_html(url):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu"
-            ]
-        )
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu"
+                ]
+            )
 
-        page = browser.new_page()
+            page = browser.new_page()
+            page.goto(url, timeout=30000)
+            page.wait_for_timeout(1500)
 
-        page.goto(url, timeout=60000)
+            html = page.content()
+            browser.close()
 
-        page.wait_for_timeout(2000)
+            return html
 
-        html = page.content()
+    except Exception as e:
+        print("Playwright failed, fallback requests:", e)
 
-        browser.close()
-
-        return html
-
+        # 🔥 fallback（避免 app crash）
+        try:
+            r = requests.get(url, timeout=10)
+            return r.text
+        except:
+            return ""
 
 # =========================
 # SHOPEE (JS RENDERED)
