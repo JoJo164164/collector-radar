@@ -4,36 +4,22 @@ from scraper_ebay import scrape_ebay
 from scraper_yahoo import scrape_yahoo
 
 
-def normalize(r):
-
-    # dict already
-    if isinstance(r, dict):
-        return r
-
-    # object (Product class)
-    return {
-        "title": getattr(r, "title", None),
-        "price": getattr(r, "price", None),
-        "url": getattr(r, "url", None),
-        "image": getattr(r, "image", None),
-        "source": getattr(r, "source", None),
-    }
-
-
 def search_all(keyword, sources):
 
     results = []
 
-    if "shopee" in sources:
-        results += scrape_shopee(keyword)
+    mapping = {
+        "shopee": scrape_shopee,
+        "mercari": scrape_mercari,
+        "ebay": scrape_ebay,
+        "yahoo": scrape_yahoo,
+    }
 
-    if "mercari" in sources:
-        results += scrape_mercari(keyword)
+    for s in sources:
+        try:
+            results += mapping[s](keyword)
+        except:
+            continue
 
-    if "ebay" in sources:
-        results += scrape_ebay(keyword)
-
-    if "yahoo" in sources:
-        results += scrape_yahoo(keyword)
-
-    return [normalize(r) for r in results]
+    # remove empty titles
+    return [r for r in results if r.get("title")]
