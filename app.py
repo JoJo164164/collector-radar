@@ -27,7 +27,8 @@ if st.button("search"):
 
         st.markdown("---")
 
-        st.write("🏪", r["source"])
+        st.write("🏪", r.get("source", "unknown"))
+st.write("📦", r.get("title", "no title"))
         st.write("📦", r["title"])
 
         if r.get("price"):
