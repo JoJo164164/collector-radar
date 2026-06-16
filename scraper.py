@@ -76,16 +76,24 @@ def fetch_html(url):
 # SHOPEE (JS RENDERED)
 # =========================
 def scrape_shopee(keyword, limit=20):
+
     url = f"https://shopee.tw/search?keyword={keyword}"
 
     html = fetch_html(url)
+
+    # ❗ fallback protection
+    if not html:
+        return []
+
     soup = BeautifulSoup(html, "lxml")
 
     results = []
 
-    # Shopee cards (best-effort parse)
     for a in soup.select("a"):
         title = a.get_text(" ", strip=True)
+
+        if not title:
+            continue
 
         if len(title) < 5:
             continue
@@ -108,7 +116,6 @@ def scrape_shopee(keyword, limit=20):
             break
 
     return results
-
 
 # =========================
 # MERCARI (JS RENDERED)
