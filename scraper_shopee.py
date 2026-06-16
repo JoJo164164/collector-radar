@@ -1,18 +1,12 @@
 import requests
-from model import Product
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json"
-}
-
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 def scrape_shopee(keyword, limit=20):
 
     url = "https://shopee.tw/api/v4/search/search_items"
 
     params = {
-        "by": "relevancy",
         "keyword": keyword,
         "limit": limit,
         "newest": 0,
@@ -28,27 +22,17 @@ def scrape_shopee(keyword, limit=20):
 
     results = []
 
-    items = data.get("items", [])
-
-    for i in items:
+    for i in data.get("items", []):
         try:
-            item = i.get("item_basic", {})
+            item = i["item_basic"]
 
-            title = item.get("name")
-            price = item.get("price") / 100000
-            image = "https://cf.shopee.tw/file/" + item.get("image", "")
-            itemid = item.get("itemid")
-            shopid = item.get("shopid")
-
-            url = f"https://shopee.tw/product/{shopid}/{itemid}"
-
-            results.append(Product(
-                title=title,
-                price=str(price),
-                url=url,
-                image=image,
-                source="shopee"
-            ))
+            results.append({
+                "title": item["name"],
+                "price": item["price"] / 100000,
+                "url": f"https://shopee.tw/product/{item['shopid']}/{item['itemid']}",
+                "image": "https://cf.shopee.tw/file/" + item["image"],
+                "source": "shopee"
+            })
 
         except:
             continue
